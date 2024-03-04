@@ -1,29 +1,25 @@
 import cv2
-import mediapipe as mp
+import streamlit as st
 from streamlit_webrtc import VideoTransformerBase, webrtc_streamer
+
 
 class VideoTransformer(VideoTransformerBase):
     def __init__(self):
-        super().__init__()
-        self.mp_face_detection = mp.solutions.face_detection
-        self.face_detection = self.mp_face_detection.FaceDetection(min_detection_confidence=0.5)
+        self.threshold1 = 100
+        self.threshold2 = 200
 
     def transform(self, frame):
         img = frame.to_ndarray(format="bgr24")
 
-        # Convert the image to RGB and process it with Mediapipe
-        rgb_image = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        results = self.face_detection.process(rgb_image)
-
-        # Draw bounding boxes around detected faces
-        if results.detections:
-            for detection in results.detections:
-                bboxC = detection.location_data.relative_bounding_box
-                ih, iw, _ = img.shape
-                bbox = int(bboxC.xmin * iw), int(bboxC.ymin * ih), \
-                       int(bboxC.width * iw), int(bboxC.height * ih)
-                cv2.rectangle(img, (bbox[0], bbox[1]), (bbox[0]+bbox[2], bbox[1]+bbox[3]), (0, 255, 0), 2)
+        img = cv2.cvtColor(
+            cv2.Canny(img, self.threshold1, self.threshold2), cv2.COLOR_GRAY2BGR
+        )
 
         return img
 
-webrtc_streamer(key="example", video_transformer_factory=VideoTransformer)
+
+ctx = webrtc_streamer(key="example", video_transformer_factory=VideoTransformer)
+
+if ctx.video_transformer:
+    ctx.video_transformer.threshold1 = st.slider("Threshold1", 0, 1000, 100)
+    ctx.video_transformer.threshold2 = st.slider("Threshold2", 0, 1000, 200)
